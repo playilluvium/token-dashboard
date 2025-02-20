@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Include Database class directly
+        class Database {
+            constructor() {
+                this.chainId = 'base';  // Default to Base chain
+            }
+
+            async getTokenList() {
+                const response = await fetch('/api/tokens?view=list');
+                if (!response.ok) throw new Error('Failed to fetch tokens');
+                return response.json();
+            }
+
+            async getDailyData() {
+                const response = await fetch('/api/tokens?view=daily');
+                if (!response.ok) throw new Error('Failed to fetch tokens');
+                return response.json();
+            }
+
+            async getHistoricalData() {
+                // Get the full token data including addresses
+                const response = await fetch('/api/tokens?view=daily');
+                if (!response.ok) throw new Error('Failed to fetch historical data');
+                const data = await response.json();
+
+                // Add address to each token
+                const tokensWithAddresses = await Promise.all(
+                    data.map(async token => {
+                        const listResponse = await fetch('/api/tokens?view=list');
+                        const listData = await listResponse.json();
+                        const tokenInfo = listData.find(t => t.symbol === token.symbol && t.chainId === token.chainId);
+                        return {
+                            ...token,
+                            address: tokenInfo?.address || ''
+                        };
+                    })
+                );
+
+                return tokensWithAddresses;
+            }
+
+            async addToken(symbol, address) {
+                const response = await fetch('/api/tokens', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        symbol, 
+                        address,
+                        chainId: this.chainId
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to add token');
+                return data;
+            }
+
+            async deleteToken(symbol) {
+                const response = await fetch(`/api/tokens/${symbol}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error('Failed to delete token');
+                return response.json();
+            }
+
+            async refreshTokenData() {
+                const response = await fetch('/api/tokens/refresh', {
+                    method: 'POST'
+                });
+                if (!response.ok) throw new Error('Failed to refresh token data');
+                return response.json();
+            }
+        }
+    </script>
+    <script src="./js/app.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Tab Navigation -->
+        <div class="mb-4 border-b border-gray-200">
+            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" role="tablist">
+                <li class="mr-2" role="presentation">
+                    <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 tab-button active" 
+                            data-tab="daily">Daily View</button>
+                </li>
+                <li class="mr-2" role="presentation">
+                    <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 tab-button" 
+                            data-tab="historical">Historical View</button>
+                </li>
+                <li class="mr-2" role="presentation">
+                    <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 tab-button" 
+                            data-tab="tokelist">Token List</button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Daily View Tab -->
+            <div id="daily" class="tab-pane active">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-xl font-bold mb-4">Daily View</h2>
+                    <div id="daily-content">
+                        <!-- Daily content will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historical View Tab -->
+            <div id="historical" class="tab-pane hidden">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-xl font-bold mb-4">Historical View</h2>
+                    <div id="historical-content">
+                        <div class="accordion" id="tokenAccordion">
+                            <!-- Token data will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token List Tab -->
+            <div id="tokelist" class="tab-pane hidden">
+                <!-- Add Token Form -->
+                <div class="bg-white rounded-lg shadow p-6 mb-8">
+                    <h2 class="text-xl font-bold mb-4">Add New Token</h2>
+                    <form id="addTokenForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="tokenSymbol">
+                                    Token Symbol
+                                </label>
+                                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                                       id="tokenSymbol" type="text" placeholder="e.g. ETH">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="tokenAddress">
+                                    Token Address
+                                </label>
+                                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                                       id="tokenAddress" type="text" placeholder="0x...">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="chainId">
+                                    Chain
+                                </label>
+                                <select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                                        id="chainId">
+                                    <!-- Options will be populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" 
+                                    type="submit">
+                                Add Token
+                            </button>
+                            <span id="addTokenSuccess" class="ml-4 hidden"></span>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Token List -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-xl font-bold mb-4">Token List</h2>
+                    <div id="tokelist-content">
+                        <!-- Token list content will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
