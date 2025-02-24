@@ -16,4 +16,18 @@ async function connectToDatabase() {
     return db;
 }
 
+export class Database {
+    constructor() {
+        this.chainId = 'base';  // Default to Base chain
+    }
+
+    async getTokenList() {
+        const response = await fetch('/api/tokens?view=list');
+        if (!response.ok) throw new Error('Failed to fetch tokens');
+        return response.json();
+    }
+
+    // ... rest of the Database class methods
+}
+
 module.exports = { connectToDatabase }; 
