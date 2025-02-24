@@ -1,4 +1,4 @@
-const { connectToDatabase } = require('../src/db');
+const { connectToDatabase } = require('./db');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 // Rate limiting middleware
@@ -50,6 +50,29 @@ async function fetchTokenData(address, chainId) {
         throw error;
     }
 }
+
+module.exports = async (req, res) => {
+  try {
+    const db = await connectToDatabase();
+    const view = req.query.view;
+
+    switch (view) {
+      case 'list':
+        const tokens = await db.collection('tokens').find({}).toArray();
+        return res.json(tokens);
+      
+      case 'daily':
+        const dailyData = await db.collection('daily_data').find({}).toArray();
+        return res.json(dailyData);
+      
+      default:
+        return res.status(400).json({ error: 'Invalid view parameter' });
+    }
+  } catch (error) {
+    console.error('Database error:', error);
+    return res.status(500).json({ error: 'Failed to fetch data' });
+  }
+};
 
 export default async function handler(req, res) {
     if (req.method === 'OPTIONS') {

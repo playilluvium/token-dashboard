@@ -2,12 +2,10 @@
   "name": "token-dashboard",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
   "scripts": {
-    "test": "react-scripts test",
-    "dev": "vercel dev",
-    "build": "react-scripts build",
     "start": "react-scripts start",
+    "build": "export NODE_OPTIONS=--openssl-legacy-provider && react-scripts build",
+    "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "keywords": [],
@@ -15,12 +13,10 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
-    "node-fetch": "^3.3.0",
     "mongodb": "^5.0.0",
+    "node-fetch": "^3.3.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
+    "react-dom": "^18.2.0",
     "react-scripts": "^5.0.1"
   },
   "browserslist": {
